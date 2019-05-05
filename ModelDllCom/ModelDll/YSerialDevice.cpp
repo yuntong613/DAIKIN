@@ -24,7 +24,6 @@ DWORD CALLBACK QuertyThread(LPVOID pParam)
 
 YSerialDevice::YSerialDevice(LPCSTR pszAppPath)
 : m_nBaudRate(9600)
-, m_nComPort(1)
 , m_bStop(true)
 {
 	m_nParity = 0;
@@ -86,13 +85,9 @@ BOOL YSerialDevice::InitConfig(CString strFilePath)
 	m_lRate = iniFile.GetUInt("param","UpdateRate",3000);
 	m_nUseLog = iniFile.GetUInt("param","Log",0);
 
-	m_nComPort = iniFile.GetUInt("ComInfo","ComPort",3);
+	iniFile.GetArray("ComInfo","ComPort",&m_ComPortArray);
 	m_nBaudRate = iniFile.GetUInt("ComInfo","BaudRate",9600);
 	m_nParity = iniFile.GetUInt("ComInfo","Parity",0);
-
-	CString strSec;
-	strSec.Format("COM%d", m_nComPort);
-	iniFile.GetArray(strSec, "Addr", &m_AddrArray);
 
 	return TRUE;
 }
@@ -208,7 +203,7 @@ bool YSerialDevice::CheckSum(CString szText)
 	return (strTmp == szText.Right(4));
 }
 
-void YSerialDevice::Handle42Data(BYTE* cpData, int nLen)
+void YSerialDevice::Handle42Data(CString strCom, BYTE* cpData, int nLen)
 {
 	CString strFun = "42";
 	if ((nLen == 70) && (cpData[0] == 0x7E) && (cpData[nLen - 1] == 0x0D))
@@ -241,7 +236,8 @@ void YSerialDevice::Handle42Data(BYTE* cpData, int nLen)
 					CString strValue;
 					strValue.Format("%.2f", strtol(strTmp, NULL, 16)/100.0);
 
-					CString strItemName = strAddr + "-" + strFun + "-RAT-F";
+					CString strItemName;
+					strItemName.Format("%s-%s-%s-RAT-F", strCom, strAddr, strFun);
 					YOPCItem* pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strValue);
@@ -260,7 +256,7 @@ void YSerialDevice::Handle42Data(BYTE* cpData, int nLen)
 	}
 }
 
-void YSerialDevice::Handle43Data(BYTE* cpData, int nLen)
+void YSerialDevice::Handle43Data(CString strCom, BYTE* cpData, int nLen)
 {
 	CString strFun = "43";
 	CString strItemName,strNameHead;
@@ -295,7 +291,7 @@ void YSerialDevice::Handle43Data(BYTE* cpData, int nLen)
 
 					CString strRunStatus = szText.Left(2);
 					szText.Delete(0, 2);//移除运行状态 00 停止, 01 运转
-					strItemName = strNameHead + "-KTRS-S";
+					strItemName.Format("%s-%s-KTRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strRunStatus);
@@ -305,7 +301,7 @@ void YSerialDevice::Handle43Data(BYTE* cpData, int nLen)
 
 					CString strJSZ = szText.Left(2);
 					szText.Delete(0, 2);//移除加湿器状态 00 停止, 01 运转
-					strItemName = strNameHead + "-JSRRS-S";
+					strItemName.Format("%s-%s-JSRRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strJSZ);
@@ -313,14 +309,14 @@ void YSerialDevice::Handle43Data(BYTE* cpData, int nLen)
 
 					CString strDJR = szText.Left(2); 
 					szText.Delete(0, 2);//移除电加热状态 00 停止, 01 运转
-					strItemName = strNameHead + "-DJRRS-S";
+					strItemName.Format("%s-%s-DJRRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strDJR);
 
 					CString strFunRS = szText.Left(2);
 					szText.Delete(0, 2);//移除风扇状态 00 停止, 01 运转
-					strItemName = strNameHead + "-FUNRS-S";
+					strItemName.Format("%s-%s-FUNRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strFunRS);
@@ -328,42 +324,42 @@ void YSerialDevice::Handle43Data(BYTE* cpData, int nLen)
 
 					CString strYSJ = szText.Left(2);
 					szText.Delete(0, 2);//移除压缩机状态 00 停止, 01 运转
-					strItemName = strNameHead + "-YSJRS-S";
+					strItemName.Format("%s-%s-YSJRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strYSJ);
 
 					CString strGLW = szText.Left(2);
 					szText.Delete(0, 2);//移除过滤网状态 00 OFF, 01 ON
-					strItemName = strNameHead + "-GLWRS-S";
+					strItemName.Format("%s-%s-GLWRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strGLW);
 
 					CString strZYB = szText.Left(2);
 					szText.Delete(0, 2);//移除注意报状态 00 OFF, 01 ON
-					strItemName = strNameHead + "-ZYBRS-S";
+					strItemName.Format("%s-%s-ZYBRS-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strZYB);
 
 					CString strAlarm = szText.Left(2);
 					szText.Delete(0, 2);//移除报警状态 00 OFF, 01 ON
-					strItemName = strNameHead + "-ALARM-S";
+					strItemName.Format("%s-%s-ALARM-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strAlarm);
 
 					CString strError = szText.Left(2);
 					szText.Delete(0, 2);//移除异常状态 00 OFF, 01 ON
-					strItemName = strNameHead + "-ERROR-S";
+					strItemName.Format("%s-%s-ERROR-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strError);
 
 					CString strRunMode = szText.Left(2);
 					szText.Delete(0, 2);//移除运转状态   00H 送风, 01H 制热, 02H 制冷
-					strItemName = strNameHead + "-MODE-S";
+					strItemName.Format("%s-%s-MODE-S", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strRunMode);
@@ -382,7 +378,7 @@ void YSerialDevice::Handle43Data(BYTE* cpData, int nLen)
 	}
 }
 
-void YSerialDevice::Handle44Data(BYTE* cpData, int nLen)
+void YSerialDevice::Handle44Data(CString strCom, BYTE* cpData, int nLen)
 {
 	CString strFun = "44";
 	if ((nLen == 46) && (cpData[0] == 0x7E) && (cpData[nLen - 1] == 0x0D))
@@ -415,8 +411,8 @@ void YSerialDevice::Handle44Data(BYTE* cpData, int nLen)
 
 					CString strHFAalarm = szText.Left(2);
 					szText.Delete(0, 2);//移除回风运行状态 00 正常， F0 故障 ， 01H 下限以下， 02H 上限以上 
-
-					CString strItemName = strAddr + "-" + strFun + "-RATRS-S";
+					CString strItemName;
+					strItemName.Format("%s-%s-%s-RATRS-S", strCom, strAddr, strFun);
 					YOPCItem* pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strHFAalarm);
@@ -434,7 +430,7 @@ void YSerialDevice::Handle44Data(BYTE* cpData, int nLen)
 	}
 }
 
-void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
+void YSerialDevice::Handle47Data(CString strCom, BYTE* cpData, int nLen)
 {
 	CString strFun = "47";
 	CString strItemName, strNameHead;
@@ -471,7 +467,7 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 					
 					CString strOnTmp;
 					strOnTmp.Format("%.2f", strtol(strTmp, NULL, 16) / 100.0);
-					strItemName = strNameHead + "-TEMPON-F";
+					strItemName.Format("%s-%s-TEMPON-F", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strOnTmp);
@@ -482,7 +478,7 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 
 					CString strOffTmp;
 					strOffTmp.Format("%.2f", strtol(strTmp, NULL, 16) / 100.0);
-					strItemName = strNameHead + "-TEMPOFF-F";
+					strItemName.Format("%s-%s-TEMPOFF-F", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strOffTmp);
@@ -493,7 +489,7 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 
 					CString strTmpHi;
 					strTmpHi.Format("%.2f", strtol(strTmp, NULL, 16) / 100.0);
-					strItemName = strNameHead + "-RATHI-F";
+					strItemName.Format("%s-%s-RATHI-F", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strTmpHi);
@@ -504,7 +500,7 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 
 					CString strTmpLo;
 					strTmpLo.Format("%.2f", strtol(strTmp, NULL, 16) / 100.0);
-					strItemName = strNameHead + "-RATLO-F";
+					strItemName.Format("%s-%s-RATLO-F", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strTmpLo);
@@ -515,7 +511,7 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 
 					CString strHumidityHi;
 					strHumidityHi.Format("%.2f", strtol(strTmp, NULL, 16) / 100.0);
-					strItemName = strNameHead + "-RAHHI-F";
+					strItemName.Format("%s-%s-RAHHI-F", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strHumidityHi);
@@ -526,7 +522,7 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 
 					CString strHumidityLo;
 					strHumidityLo.Format("%.2f", strtol(strTmp, NULL, 16) / 100.0);
-					strItemName = strNameHead + "-RAHLO-F";
+					strItemName.Format("%s-%s-RAHLO-F", strCom, strNameHead);
 					pItem = GetItemByName(strItemName);
 					if (pItem)
 						pItem->OnUpdate(strHumidityLo);
@@ -546,57 +542,71 @@ void YSerialDevice::Handle47Data(BYTE* cpData, int nLen)
 
 int YSerialDevice::QueryOnce()
 {
-	CString strAddr;
+	CString strAddr,strCom, strSec;
 	CByteArray data;
 	CString strHex;
 	BYTE cpRecv[1024] = { 0 };
 	DWORD dwRead = 0;
-	if (m_Com.Open(m_nComPort, m_nBaudRate, m_nParity))
+	int nComPort = 0;
+
+	CIniFile iniFile(m_strConfigPath);
+	for (int k = 0; k < m_ComPortArray.GetCount(); k++)
 	{
-		for (int i = 0; i < m_AddrArray.GetCount(); i++)
+		nComPort = atoi(m_ComPortArray.GetAt(k));	
+		strSec.Format("COM%d", nComPort);
+		iniFile.GetArray(strSec, "Addr", &m_AddrArray);
+
+		if (m_Com.Open(nComPort, m_nBaudRate, m_nParity))
 		{
-			strAddr = m_AddrArray.GetAt(i);
-
-			strHex = GetCommandHexStr(strAddr, "42", data);
-			m_Com.Write(data.GetData(), data.GetCount());
-			OutPutLog("[发送] " + strHex);
-			dwRead = m_Com.Read(cpRecv, 1024, 1000);
-			OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
-			Handle42Data(cpRecv, dwRead);
-
-
-			data.RemoveAll();
-			memset(cpRecv, 0, 1024);
-			strHex = GetCommandHexStr(strAddr, "43", data);
-			m_Com.Write(data.GetData(), data.GetCount());
-			OutPutLog("[发送] " + strHex);
-			dwRead = m_Com.Read(cpRecv, 1024, 1000);
-			OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
-			Handle43Data(cpRecv, dwRead);
+			for (int i = 0; i < m_AddrArray.GetCount(); i++)
+			{
+				strAddr = m_AddrArray.GetAt(i);
+				strCom.Format("C%d", nComPort);
+				strHex = GetCommandHexStr(strAddr, "42", data);
+				m_Com.Write(data.GetData(), data.GetCount());
+				OutPutLog("[发送] " + strHex);
+				dwRead = m_Com.Read(cpRecv, 1024, 1000);
+				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
+				Handle42Data(strCom, cpRecv, dwRead);
 
 
-			data.RemoveAll();
-			memset(cpRecv, 0, 1024);
-			strHex = GetCommandHexStr(strAddr, "44", data);
-			m_Com.Write(data.GetData(), data.GetCount());
-			OutPutLog("[发送] " + strHex);
-			dwRead = m_Com.Read(cpRecv, 1024, 1000);
-			OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
-			Handle44Data(cpRecv, dwRead);
+				data.RemoveAll();
+				memset(cpRecv, 0, 1024);
+				strHex = GetCommandHexStr(strAddr, "43", data);
+				m_Com.Write(data.GetData(), data.GetCount());
+				OutPutLog("[发送] " + strHex);
+				dwRead = m_Com.Read(cpRecv, 1024, 1000);
+				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
+				Handle43Data(strCom, cpRecv, dwRead);
 
-			data.RemoveAll();
-			memset(cpRecv, 0, 1024);
-			strHex = GetCommandHexStr(strAddr, "47", data);
-			m_Com.Write(data.GetData(), data.GetCount());
-			OutPutLog("[发送] " + strHex);
-			dwRead = m_Com.Read(cpRecv, 1024, 1000);
-			OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
-			Handle47Data(cpRecv, dwRead);
+
+				data.RemoveAll();
+				memset(cpRecv, 0, 1024);
+				strHex = GetCommandHexStr(strAddr, "44", data);
+				m_Com.Write(data.GetData(), data.GetCount());
+				OutPutLog("[发送] " + strHex);
+				dwRead = m_Com.Read(cpRecv, 1024, 1000);
+				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
+				Handle44Data(strCom, cpRecv, dwRead);
+
+				data.RemoveAll();
+				memset(cpRecv, 0, 1024);
+				strHex = GetCommandHexStr(strAddr, "47", data);
+				m_Com.Write(data.GetData(), data.GetCount());
+				OutPutLog("[发送] " + strHex);
+				dwRead = m_Com.Read(cpRecv, 1024, 1000);
+				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
+				Handle47Data(strCom, cpRecv, dwRead);
+			}
+
+
+			m_Com.Close();
 		}
-
-
-		m_Com.Close();
 	}
+
+
+
+
 	return 0;
 }
 

@@ -15,10 +15,10 @@ public:
 
 	CString GetCommandHexStr(CString strAddr, CString strCmd, CByteArray& byteAll);
 	bool CheckSum(CString szText);
-	void Handle42Data(BYTE* cpData, int nLen);
-	void Handle43Data(BYTE* cpData, int nLen);
-	void Handle44Data(BYTE* cpData, int nLen);
-	void Handle47Data(BYTE* cpData, int nLen);
+	void Handle42Data(CString strCom, BYTE* cpData, int nLen);
+	void Handle43Data(CString strCom, BYTE* cpData, int nLen);
+	void Handle44Data(CString strCom, BYTE* cpData, int nLen);
+	void Handle47Data(CString strCom, BYTE* cpData, int nLen);
 
 	virtual void HandleData();
 	virtual void Serialize(CArchive& ar);
@@ -37,7 +37,7 @@ public:
 public:
 	long y_lUpdateTimer;
 public:
-	int m_nComPort;
+	CStringArray m_ComPortArray;
 	int m_nBaudRate;
 	int m_nParity;
 public:
