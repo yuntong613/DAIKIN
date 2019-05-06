@@ -7,6 +7,8 @@
 #include <cstringt.h>
 #include "ModelDll.h"
 #include "OPCIniFile.h"
+#include <string>
+using namespace std;
 
 extern CModelDllApp theApp;
 
@@ -88,7 +90,7 @@ BOOL YSerialDevice::InitConfig(CString strFilePath)
 	iniFile.GetArray("ComInfo","ComPort",&m_ComPortArray);
 	m_nBaudRate = iniFile.GetUInt("ComInfo","BaudRate",9600);
 	m_nParity = iniFile.GetUInt("ComInfo","Parity",0);
-
+	m_nTimeOut = iniFile.GetUInt("ComInfo", "TimeOut", 3000);
 	return TRUE;
 }
 
@@ -149,10 +151,10 @@ void YSerialDevice::LoadItems(CArchive& ar)
 
 void YSerialDevice::OnUpdate()
 {
-// 	y_lUpdateTimer--;
-// 	if(y_lUpdateTimer>0)return;
-// 	y_lUpdateTimer = m_lRate/1000;
-
+	y_lUpdateTimer--;
+	if(y_lUpdateTimer>0)return;
+	y_lUpdateTimer = m_lRate/1000;
+//	QueryOnce();
 }
 
 
@@ -549,7 +551,18 @@ int YSerialDevice::QueryOnce()
 	DWORD dwRead = 0;
 	int nComPort = 0;
 
+	CString strLog;
+
+	DWORD dwOptions = 0;
+	/*	dwOptions |=CnComm::EN_RX_BUFFER;*/
+	dwOptions |= CnComm::EN_THREAD;
+	//	dwOptions |=CnComm::EN_RX_THREAD;
+	dwOptions |= CnComm::EN_OVERLAPPED;
+
+	m_Com.SetOption(dwOptions);
+
 	CIniFile iniFile(m_strConfigPath);
+	
 	for (int k = 0; k < m_ComPortArray.GetCount(); k++)
 	{
 		nComPort = atoi(m_ComPortArray.GetAt(k));	
@@ -565,9 +578,12 @@ int YSerialDevice::QueryOnce()
 				strHex = GetCommandHexStr(strAddr, "42", data);
 				m_Com.Write(data.GetData(), data.GetCount());
 				OutPutLog("[发送] " + strHex);
+				Sleep(m_nTimeOut);
+
 				dwRead = m_Com.Read(cpRecv, 1024, 1000);
 				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
 				Handle42Data(strCom, cpRecv, dwRead);
+				Sleep(m_nTimeOut);
 
 
 				data.RemoveAll();
@@ -575,28 +591,36 @@ int YSerialDevice::QueryOnce()
 				strHex = GetCommandHexStr(strAddr, "43", data);
 				m_Com.Write(data.GetData(), data.GetCount());
 				OutPutLog("[发送] " + strHex);
+				Sleep(m_nTimeOut);
+
 				dwRead = m_Com.Read(cpRecv, 1024, 1000);
 				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
 				Handle43Data(strCom, cpRecv, dwRead);
-
+				Sleep(m_nTimeOut);
 
 				data.RemoveAll();
 				memset(cpRecv, 0, 1024);
 				strHex = GetCommandHexStr(strAddr, "44", data);
 				m_Com.Write(data.GetData(), data.GetCount());
 				OutPutLog("[发送] " + strHex);
+				Sleep(m_nTimeOut);
+
 				dwRead = m_Com.Read(cpRecv, 1024, 1000);
 				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
 				Handle44Data(strCom, cpRecv, dwRead);
+				Sleep(m_nTimeOut);
 
 				data.RemoveAll();
 				memset(cpRecv, 0, 1024);
 				strHex = GetCommandHexStr(strAddr, "47", data);
 				m_Com.Write(data.GetData(), data.GetCount());
 				OutPutLog("[发送] " + strHex);
+				Sleep(m_nTimeOut);
+
 				dwRead = m_Com.Read(cpRecv, 1024, 1000);
 				OutPutLog("[接收] " + Bin2HexStr(cpRecv, dwRead));
 				Handle47Data(strCom, cpRecv, dwRead);
+				Sleep(m_nTimeOut);
 			}
 
 
@@ -624,7 +648,7 @@ void YSerialDevice::BeginUpdateThread()
 
 void YSerialDevice::EndUpdateThread()
 {
-	if(!m_bStop)
+	if (!m_bStop)
 	{
 		m_bStop = true;
 		DWORD dwRet = WaitForSingleObject(m_hQueryThread,3000);

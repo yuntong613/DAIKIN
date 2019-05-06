@@ -40,6 +40,7 @@ public:
 	CStringArray m_ComPortArray;
 	int m_nBaudRate;
 	int m_nParity;
+	int m_nTimeOut;
 public:
 	int m_nUseLog;
 	CLog m_Log;
